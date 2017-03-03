@@ -1,0 +1,211 @@
+#!/usr/bin/python
+
+# Author:       Gabriele Bozzola (sbozzolo)
+# Email:        sbozzolator@gmail.com
+# Date:         28.02.2017
+# Last Edit:    28.02.2017 (sbozzolo)
+
+#~ This module is used to draw the interface
+import npyscreen as nps
+
+#~ To rename forward and to get the HOME
+from os import rename as rename
+from os import getenv as getenv
+
+#~ This dictionary is intended to contain every string of emailconf,
+#~ so it is easier to modify text and maintain the code compact
+
+words = {'MainFormName'   : "emailconf",
+         'ExitText'       : "Esci",
+         'MenuButtonText' : "Configura",
+         'MainFormText1'  : "Questo script ti permette di configurare la "
+         + "tua email di LCM. ",
+         'MainFormText2'  : "Questa e' la tua configurazione attuale, che puoi modificare"
+         + " usando la barra spaziatrice",
+         'ConfirmExit'    : "Sicuro di voler uscire?",
+         'ExitUserconf'   : "Esci da emailconf",
+         'SomethingWrong' : "Qualcosa e' andato storto! Accipigna!",
+         'Success'        : "Successo!",
+         'OpSuccess'      : "L'operazione e' stata portata a termine con successo!",
+         'ign'            : "Ignora tutte le email della casella LCM",
+         'forw'           : "Invia alla tua casella locale e all'indirizzo sottostante",
+         'red'            : "Invia solo all'indirizzo sottostante ",
+         'Warning'        : "Attenzione!",
+         'MoreThanOne'    : "Non puoi selezionare piu' di una opzione!",
+         'AtLeastOne'     : "Devi operare una scelta!",
+         'Ignore'         : "Ignora",
+         'Rederict'       : "Rederict",
+         'Forward'        : "Forward",
+         'ToEmail'        : "Indirizzo email: "
+}
+
+########################################################################
+#                                                                      #
+#            Box: Overloads nps.BoxBasic to contain only a             #
+#            checkox widget, not a multiline                           #
+#                                                                      #
+########################################################################
+
+
+class Box (nps.BoxTitle):
+    _contained_widget = nps.CheckBox
+
+
+########################################################################
+#                                                                      #
+#            MainForm: MAIN form, call menu and other forms            #
+#            Contains menu and shortcut to every feature               #
+#                                                                      #
+########################################################################
+
+class MainForm (nps.ActionFormV2):
+    """Class that draws the main screen of wmchoose"""
+
+    #~ Rename button using Italian language
+    OK_BUTTON_TEXT      = words['ExitText']
+    CANCEL_BUTTON_TEXT  = words['MenuButtonText']
+
+    #~ Create form elements and menus
+    def create(self):
+        """Add to the form the widgets"""
+
+        #~ Get the configuration file path
+        xfile = getenv('HOME') + "/.forward"
+        try:
+            #~ Open file and count lines
+            forward = open(xfile,'r')
+            try:
+                num = sum(1 for line in forward)
+            except:
+                nps.notify_confirm(words['SomethingWrong'], words['Warning'])
+                self.exit_application()
+                return
+        except:
+            # If file does not exist, create it
+            num = 0
+            forward = open(xfile,'w')
+
+        forward.close()
+
+        #~ If file has zero lines user doesn't get email (ignore)
+        #~ If file has one line user gets emails only in his other address (rederict)
+        #~ If file has two lines user gets email both in this account and other address (forward)
+
+        #~ To have the correct box checked
+        iv = False
+        rv = False
+        fv = False
+        #~ One of this values will be set to True, this will
+        #~ activate the checkbox corresponing to the present user
+        #~ configuration
+
+        if (num == 0):
+            old_email = ""
+            iv = True
+        elif (num == 1):
+            forward = open(xfile, 'r')   #~ Open the file in r mode
+            old_email = forward.readline().strip()
+            forward.close()                   #~ Closes file
+            rv = True
+        elif (num == 2):
+            #~ Example of .forword with this setting:
+            #~ sbozzolo
+            #~ sbozzolator@gmail.com
+            #~ The second line contains the address
+            forward = open(xfile, 'r')   #~ Open the file in r mode
+            lines = forward.readlines()
+            old_email = lines[1].strip()
+            forward.close()                   #~ Closes file
+            fv = True
+        else:
+            nps.notify_confirm(words['SomethingWrong'], words['Warning'])               #~ If something went wrong
+            self.exit_application()
+            return
+
+        #~ Display the options
+        self.add(nps.FixedText, value = words['MainFormText1'], editable = False)
+        self.nextrely += 1 #~ Shift down the options
+        self.add(nps.FixedText, value = words['MainFormText2'], editable = False)
+        self.nextrely += 1 #~ Shift down the options
+        self.ign = self.add(Box, name = words['Ignore'], min_width = 30, max_height = 5, value = iv)
+        self.ign.entry_widget.name = words['ign']
+        self.nextrely += 1 #~ Shift down the options
+        self.red = self.add(Box, name = words['Rederict'], min_width = 30, max_height = 5, value = rv)
+        self.red.entry_widget.name = words['red']
+        self.nextrely += 1 #~ Shift down the options
+        self.forw = self.add(Box, name = words['Forward'], min_width = 30, max_height = 5, value = fv)
+        self.forw.entry_widget.name = words['forw']
+        self.nextrely += 1 #~ Shift down the options
+        self.email = self.add(nps.TitleText, name = words['ToEmail'], value = old_email,
+                              min_width = 30, max_height = 5, use_two_lines = False,
+                              begin_entry_at = 25)
+
+    def on_cancel(self):
+        """Performs checks and change .forward"""
+
+        #~ Check if there are more than oselection
+        entries = (self.red.entry_widget.value,
+                   self.forw.entry_widget.value,
+                   self.ign.entry_widget.value)
+
+        count =  sum([1 for ct in entries if ct])
+
+        if (count > 1):
+            nps.notify_confirm(words['MoreThanOne'], words['Warning'])
+            return #~ If there are more than 1 checked retry
+
+        if (count == 0):
+            nps.notify_confirm(words['AtLeastOne'], words['Warning'])
+            return   #~ If there are less than 1 checked retry
+
+        #~ What to write in .forward
+        if self.ign.entry_widget.value == True: text = ""
+        if self.red.entry_widget.value == True: text = self.email.value + "\n"
+        if self.forw.entry_widget.value == True: text = getenv('USER') + "\n" + self.email.value + "\n"
+
+        try:
+            xfile = getenv('HOME') + "/.forward"
+            forward = open(xfile, 'w')   #~ Open the file in write mode
+            forward.truncate()                #~ Erase the configuration file
+            forward.write(text)               #~ Write configuration
+            forward.close()                   #~ Closes file
+            nps.notify_confirm(words['OpSuccess'], words['Success'], editw = 1)
+            self.exit_application()
+            return
+        except:
+            nps.notify_confirm(words['SomethingWrong'], words['Warning'], editw = 1)               #~ If something went wrong
+            self.exit_application()
+            return
+
+    def on_ok(self):
+        """Ask a confirmation for exiting"""
+        exiting = nps.notify_yes_no(words['ConfirmExit'], words['ExitText'], editw = 2)
+        if (exiting):
+            self.exit_application()
+        else:
+            pass #~ Do nothing
+
+    def exit_application(self):
+        """Closes the GUI"""
+        self.parentApp.setNextForm(None)
+        self.editing = False
+        self.parentApp.switchFormNow()
+
+########################################################################
+#                                                                      #
+#             GUI: Provides every form of the interface and            #
+#             defines their ID and size                                #
+#                                                                      #
+########################################################################
+
+class GUI (nps.NPSAppManaged):
+    """Defines the whole application GUI"""
+
+    def onStart( self ):
+        """Adds the forms"""
+        #~ Main form
+        self.addForm('MAIN', MainForm, name = words['MainFormName'])
+
+if ( __name__ == "__main__" ):
+    #~ Run the application
+	gui = GUI().run();

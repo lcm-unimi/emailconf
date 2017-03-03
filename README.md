@@ -1,2 +1,4 @@
-# emailconf
-Npyscreen script to manage .forward configuration file
+# Emailconf
+Npyscreen script to manage .forward (POSTFIX) configuration file.
+
+Requires python & npyscreen.
