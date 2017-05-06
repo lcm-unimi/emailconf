@@ -33,10 +33,11 @@ words = {'MainFormName'   : "emailconf",
          'Warning'        : "Attenzione!",
          'MoreThanOne'    : "Non puoi selezionare piu' di una opzione!",
          'AtLeastOne'     : "Devi operare una scelta!",
-         'Ignore'         : "Ignora",
+         'Empty'          : "Il file e' vuoto, scegli un'opzione",
          'Rederict'       : "Rederict",
          'Forward'        : "Forward",
-         'ToEmail'        : "Indirizzo email: "
+         'ToEmail'        : "Indirizzo email: ",
+         'ForwardFile'    : "File .forward attuale: "
 }
 
 ########################################################################
@@ -87,58 +88,77 @@ class MainForm (nps.ActionFormV2):
 
         forward.close()
 
-        #~ If file has zero lines user doesn't get email (ignore)
+        #~ If file has zero lines user doesn't get email (ignore) -> Not an option. Ask for adress to create.
         #~ If file has one line user gets emails only in his other address (rederict)
         #~ If file has two lines user gets email both in this account and other address (forward)
 
+        empty=False
         #~ To have the correct box checked
-        iv = False
         rv = False
         fv = False
+        cv = False
         #~ One of this values will be set to True, this will
         #~ activate the checkbox corresponing to the present user
         #~ configuration
 
+        #~ Empty file
         if (num == 0):
             old_email = ""
-            iv = True
-        elif (num == 1):
-            forward = open(xfile, 'r')   #~ Open the file in r mode
-            old_email = forward.readline().strip()
-            forward.close()                   #~ Closes file
+            empty = True
+        else :
+            forward=open(xfile, 'r')          #~ Open the file in r mode
+            lines = forward.readlines()
+        #~ Just one line
+        if (num == 1):
+            old_email = lines[0].strip()
             rv = True
+        #~ Two lines file
         elif (num == 2):
-            #~ Example of .forword with this setting:
+            #~ Example of .forward with this setting:
             #~ sbozzolo
             #~ sbozzolator@gmail.com
             #~ The second line contains the address
-            forward = open(xfile, 'r')   #~ Open the file in r mode
-            lines = forward.readlines()
             old_email = lines[1].strip()
-            forward.close()                   #~ Closes file
             fv = True
+        #~ Complex .forward file
+        elif (num >= 2):
+            #~ Complex .forward file, just ask if it should stay like it is
+            #~ Open the file in r mode
+            old_email=''
+            cv = True
+        #~ Something went wrong
         else:
             nps.notify_confirm(words['SomethingWrong'], words['Warning'])               #~ If something went wrong
             self.exit_application()
             return
-
+        
+        if not empty : forward.close()
         #~ Display the options
         self.add(nps.FixedText, value = words['MainFormText1'], editable = False)
         self.nextrely += 1 #~ Shift down the options
         self.add(nps.FixedText, value = words['MainFormText2'], editable = False)
         self.nextrely += 1 #~ Shift down the options
-        self.ign = self.add(Box, name = words['Ignore'], min_width = 30, max_height = 5, value = iv)
-        self.ign.entry_widget.name = words['ign']
-        self.nextrely += 1 #~ Shift down the options
+        #~ If .forward is empty, print a warning
+        if empty : 
+            self.emp = self.add(nps.TitleText, name="Warning", value = words['Empty'], editable = False)
+            self.nextrely += 1 #~ Shift down the options"""
         self.red = self.add(Box, name = words['Rederict'], min_width = 30, max_height = 5, value = rv)
         self.red.entry_widget.name = words['red']
         self.nextrely += 1 #~ Shift down the options
         self.forw = self.add(Box, name = words['Forward'], min_width = 30, max_height = 5, value = fv)
         self.forw.entry_widget.name = words['forw']
         self.nextrely += 1 #~ Shift down the options
+        """
+        Perche' non va? Non sarebbe meglio cosi'?
+        self.opt = self.add(nps.TitleSelectOne, name="Choose an option", values=["Redirect", "Forward"] )
+        """
         self.email = self.add(nps.TitleText, name = words['ToEmail'], value = old_email,
-                              min_width = 30, max_height = 5, use_two_lines = False,
-                              begin_entry_at = 25)
+                             min_width = 30, max_height = 5, use_two_lines = False,
+                             begin_entry_at = 25)
+        self.nextrely += 1 #~ Shift down the options
+        if not empty :
+            self.add(nps.TitleText, name = words['ForwardFile'], editable=False)
+            self.forward = self.add(nps.MultiLineEdit, value = '\n'.join(lines), editable=False)
 
     def on_cancel(self):
         """Performs checks and change .forward"""
@@ -146,7 +166,7 @@ class MainForm (nps.ActionFormV2):
         #~ Check if there are more than oselection
         entries = (self.red.entry_widget.value,
                    self.forw.entry_widget.value,
-                   self.ign.entry_widget.value)
+                   )
 
         count =  sum([1 for ct in entries if ct])
 
@@ -157,9 +177,9 @@ class MainForm (nps.ActionFormV2):
         if (count == 0):
             nps.notify_confirm(words['AtLeastOne'], words['Warning'])
             return   #~ If there are less than 1 checked retry
+        
 
         #~ What to write in .forward
-        if self.ign.entry_widget.value == True: text = ""
         if self.red.entry_widget.value == True: text = self.email.value + "\n"
         if self.forw.entry_widget.value == True: text = getenv('USER') + "\n" + self.email.value + "\n"
 
@@ -173,7 +193,7 @@ class MainForm (nps.ActionFormV2):
             self.exit_application()
             return
         except:
-            nps.notify_confirm(words['SomethingWrong'], words['Warning'], editw = 1)               #~ If something went wrong
+            nps.notify_confirm(words['SomethingWrong'], words['Warning'], editw = 1)  #~ If something went wrong
             self.exit_application()
             return
 
