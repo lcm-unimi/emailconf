@@ -3,7 +3,7 @@
 # Author:       Gabriele Bozzola (sbozzolo)
 # Email:        sbozzolator@gmail.com
 # Date:         28.02.2017
-# Last Edit:    28.02.2017 (sbozzolo)
+# Last Edit:    06.05.2017 (silva)
 
 #~ This module is used to draw the interface
 import npyscreen as nps
@@ -88,7 +88,7 @@ class MainForm (nps.ActionFormV2):
 
         forward.close()
 
-        #~ If file has zero lines user doesn't get email (ignore) -> Not an option. Ask for adress to create.
+        #~ If file has zero lines user doesn't get email -> Not an option. Ask for adress to create.
         #~ If file has one line user gets emails only in his other address (rederict)
         #~ If file has two lines user gets email both in this account and other address (forward)
 
@@ -96,10 +96,10 @@ class MainForm (nps.ActionFormV2):
         #~ To have the correct box checked
         rv = False
         fv = False
-        cv = False
         #~ One of this values will be set to True, this will
         #~ activate the checkbox corresponing to the present user
         #~ configuration
+        #
 
         #~ Empty file
         if (num == 0):
@@ -122,10 +122,9 @@ class MainForm (nps.ActionFormV2):
             fv = True
         #~ Complex .forward file
         elif (num >= 2):
-            #~ Complex .forward file, just ask if it should stay like it is
+            #~ Complex .forward file, print it but to nothing more
             #~ Open the file in r mode
             old_email=''
-            cv = True
         #~ Something went wrong
         else:
             nps.notify_confirm(words['SomethingWrong'], words['Warning'])               #~ If something went wrong
@@ -142,20 +141,19 @@ class MainForm (nps.ActionFormV2):
         if empty : 
             self.emp = self.add(nps.TitleText, name="Warning", value = words['Empty'], editable = False)
             self.nextrely += 1 #~ Shift down the options"""
+
         self.red = self.add(Box, name = words['Rederict'], min_width = 30, max_height = 5, value = rv)
         self.red.entry_widget.name = words['red']
         self.nextrely += 1 #~ Shift down the options
         self.forw = self.add(Box, name = words['Forward'], min_width = 30, max_height = 5, value = fv)
         self.forw.entry_widget.name = words['forw']
         self.nextrely += 1 #~ Shift down the options
-        """
-        Perche' non va? Non sarebbe meglio cosi'?
-        self.opt = self.add(nps.TitleSelectOne, name="Choose an option", values=["Redirect", "Forward"] )
-        """
+
         self.email = self.add(nps.TitleText, name = words['ToEmail'], value = old_email,
                              min_width = 30, max_height = 5, use_two_lines = False,
                              begin_entry_at = 25)
         self.nextrely += 1 #~ Shift down the options
+
         if not empty :
             self.add(nps.TitleText, name = words['ForwardFile'], editable=False)
             self.forward = self.add(nps.MultiLineEdit, value = '\n'.join(lines), editable=False)
